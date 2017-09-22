@@ -117,7 +117,7 @@ public class ThreadPool {
                     } catch (Exception ex) {
 
                         //the true exception will be inside an ExecutionException, so get it out and wrap in our own exception
-                        Exception cause = (Exception)ex.getCause();
+                        Throwable cause = ex.getCause();
                         Callable callable = entry.getValue();
 
                         ret.add(new ThreadPoolError(callable, cause));

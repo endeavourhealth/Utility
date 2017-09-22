@@ -4,9 +4,9 @@ import java.util.concurrent.Callable;
 
 public class ThreadPoolError {
     private Callable callable = null;
-    private Exception exception = null;
+    private Throwable exception = null;
 
-    public ThreadPoolError(Callable callable, Exception exception) {
+    public ThreadPoolError(Callable callable, Throwable exception) {
         this.callable = callable;
         this.exception = exception;
     }
@@ -15,7 +15,7 @@ public class ThreadPoolError {
         return callable;
     }
 
-    public Exception getException() {
+    public Throwable getException() {
         return exception;
     }
 }
