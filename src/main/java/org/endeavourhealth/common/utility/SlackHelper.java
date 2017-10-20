@@ -26,7 +26,8 @@ public class SlackHelper {
         SftpReaderAlerts("SftpReader"),
         EnterprisePersonUpdaterAlerts("EnterprisePersonUpdater"),
         EnterpriseAgeUpdaterAlerts("EnterpriseAgeUpdater"),
-        Hl7ReceiverAlerts("Hl7Receiver");
+        Hl7ReceiverAlertsBarts("Hl7ReceiverBarts"),
+        Hl7ReceiverAlertsHomerton("Hl7ReceiverHomerton");
 
         private String channelName = null;
 
