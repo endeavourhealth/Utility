@@ -13,12 +13,18 @@ import org.slf4j.LoggerFactory;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.net.SocketAddress;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
 public class SlackHelper {
     private static final Logger LOG = LoggerFactory.getLogger(SlackHelper.class);
+
+    private static final String PROXY_URL = "proxy_url";
+    private static final String PROXY_PORT = "proxy_port";
 
     //enum to define the channels we can send to
     public enum Channel {
@@ -41,6 +47,7 @@ public class SlackHelper {
     };
 
     private static Map<String, String> cachedUrls = null;
+    private static Proxy proxy = null;
 
     /*private static String slackUrl = null;
 
@@ -86,7 +93,7 @@ public class SlackHelper {
         }
 
         try {
-            SlackApi slackApi = new SlackApi(slackUrl);
+            SlackApi slackApi = new SlackApi(slackUrl, proxy);
             slackApi.call(slackMessage);
 
         } catch (SlackException se) {
@@ -94,27 +101,61 @@ public class SlackHelper {
         }
     }
 
-    private static synchronized String findUrl(Channel channel) {
+    private static String findUrl(Channel channel) {
         if (cachedUrls == null) {
-            cachedUrls = new HashMap<>();
-
-            try {
-                JsonNode node = ConfigManager.getConfigurationAsJson("slack");
-                Iterator<String> it = node.fieldNames();
-                while (it.hasNext()) {
-                    String field = it.next();
-                    JsonNode child = node.get(field);
-                    String url = child.asText();
-
-                    cachedUrls.put(field, url);
-                }
-
-            } catch (Exception ex) {
-                LOG.error("Error reading in slack config", ex);
-            }
+            readConfig();
         }
 
         return cachedUrls.get(channel.getChannelName());
+    }
+
+    private static synchronized void readConfig() {
+        if (cachedUrls != null) {
+            return;
+        }
+
+        cachedUrls = new HashMap<>();
+
+        try {
+            String proxyUrl = null;
+            Integer proxyPort = null;
+
+            JsonNode node = ConfigManager.getConfigurationAsJson("slack");
+            Iterator<String> it = node.fieldNames();
+            while (it.hasNext()) {
+                String field = it.next();
+                JsonNode child = node.get(field);
+
+                if (field.equals(PROXY_URL)) {
+                    proxyUrl = child.asText();
+
+                } else if (field.equals(PROXY_PORT)) {
+                    proxyPort = new Integer(child.asInt());
+
+                } else {
+                    String url = child.asText();
+                    cachedUrls.put(field, url);
+                }
+            }
+
+            //populate the proxy object
+            if (!Strings.isNullOrEmpty(proxyUrl)) {
+                if (proxyPort == null) {
+                    throw new Exception(PROXY_URL + " set in config but " + PROXY_PORT + " missing");
+                }
+
+                SocketAddress addr = new InetSocketAddress(proxyUrl, proxyPort.intValue());
+                proxy = new Proxy(Proxy.Type.HTTP, addr);
+                LOG.debug("Using proxy " + proxyUrl + " port " + proxyPort);
+
+            } else {
+                proxy = Proxy.NO_PROXY;
+                LOG.debug("Not using proxy");
+            }
+
+        } catch (Exception ex) {
+            LOG.error("Error reading in slack config", ex);
+        }
     }
 }
 
