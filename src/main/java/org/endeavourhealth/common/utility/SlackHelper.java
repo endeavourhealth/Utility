@@ -33,7 +33,8 @@ public class SlackHelper {
         EnterprisePersonUpdaterAlerts("EnterprisePersonUpdater"),
         EnterpriseAgeUpdaterAlerts("EnterpriseAgeUpdater"),
         Hl7ReceiverAlertsBarts("Hl7ReceiverBarts"),
-        Hl7ReceiverAlertsHomerton("Hl7ReceiverHomerton");
+        Hl7ReceiverAlertsHomerton("Hl7ReceiverHomerton"),
+        JDBCReaderAlertsHomerton("JDBCReaderAlertsHomerton");
 
         private String channelName = null;
 
