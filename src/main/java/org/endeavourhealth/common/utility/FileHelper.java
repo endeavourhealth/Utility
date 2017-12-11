@@ -1,25 +1,33 @@
 package org.endeavourhealth.common.utility;
 
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.*;
+import com.google.common.base.Strings;
 import org.apache.commons.io.IOUtils;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URL;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Enumeration;
-import java.util.Stack;
+import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-public class FileHelper
-{
-    public static String loadStringResource(String resourceLocation) throws Exception
-    {
+public class FileHelper {
+
+    private static final String STORAGE_PATH_PREFIX_S3 = "S3";
+    private static final char UNIX_DELIM = '/';
+
+    private static AmazonS3 cachedS3Client = null;
+
+    public static String loadStringResource(String resourceLocation) throws Exception {
         URL url = Thread.currentThread().getContextClassLoader().getResource(resourceLocation);
 
         if (url == null)
@@ -28,8 +36,7 @@ public class FileHelper
         return loadStringResource(url);
     }
 
-    public static String loadStringResource(URL url) throws Exception
-    {
+    public static String loadStringResource(URL url) throws Exception {
         InputStream stream = url.openStream();
         String resource = IOUtils.toString(stream);
         IOUtils.closeQuietly(stream);
@@ -37,26 +44,22 @@ public class FileHelper
         return resource;
     }
 
-    public static String loadStringFile(String location) throws IOException
-    {
+    public static String loadStringFile(String location) throws IOException {
         return loadStringFile(Paths.get(location));
     }
-    public static String loadStringFile(Path path) throws IOException
-    {
+
+    public static String loadStringFile(Path path) throws IOException {
         byte[] encoded = Files.readAllBytes(path);
         return new String(encoded, "UTF-8");
     }
 
-
-    public static String combinePaths(String path1, String path2)
-    {
+    public static String combinePaths(String path1, String path2) {
         File file1 = new File(path1);
         File file2 = new File(file1, path2);
         return file2.getPath();
     }
 
-    public static boolean createDirectory(String directory)
-    {
+    public static boolean createDirectory(String directory) {
         File file = new File(directory);
 
         if (!file.exists())
@@ -65,13 +68,11 @@ public class FileHelper
         return true;
     }
 
-    public static String findFileRecursive(final File directoryStart, final String filename)
-    {
+    public static String findFileRecursive(final File directoryStart, final String filename) {
         Stack<File> files = new Stack<>();
         files.addAll(Arrays.asList(directoryStart.listFiles()));
 
-        while (!files.isEmpty())
-        {
+        while (!files.isEmpty()) {
             File file = files.pop();
 
             if (file.getName().toLowerCase().equals(filename.toLowerCase()))
@@ -84,24 +85,19 @@ public class FileHelper
         return null;
     }
 
-    public static String findFileInJar(File jarFile, String filename) throws IOException
-    {
+    public static String findFileInJar(File jarFile, String filename) throws IOException {
         ZipFile zipFile = new ZipFile(jarFile);
 
-        try
-        {
+        try {
             Enumeration zipEntries = zipFile.entries();
 
-            while (zipEntries.hasMoreElements())
-            {
-                ZipEntry zipEntry = (ZipEntry)zipEntries.nextElement();
+            while (zipEntries.hasMoreElements()) {
+                ZipEntry zipEntry = (ZipEntry) zipEntries.nextElement();
 
                 if (new File(zipEntry.getName()).getName().equals(filename))
                     return zipEntry.getName();
             }
-        }
-        finally
-        {
+        } finally {
             zipFile.close();
         }
 
@@ -132,5 +128,230 @@ public class FileHelper
         Files.createDirectory(folder);
     }
 
+    public static void writeFileToSharedStorage(String destinationPath, File source) throws Exception {
+        if (Strings.isNullOrEmpty(destinationPath)) {
+            throw new IllegalArgumentException("Must provide storage path");
+        }
 
+        if (!source.exists()) {
+            throw new IOException("Source file " + source + " doesn't exist");
+        }
+
+        if (destinationPath.startsWith(STORAGE_PATH_PREFIX_S3)) {
+
+            //if we have an S3 bucket name, then we use the S3 api
+            String s3BucketName = findS3BucketName(destinationPath);
+            String keyName = findS3KeyName(destinationPath);
+
+            AmazonS3 s3Client = getS3Client();
+            s3Client.putObject(new PutObjectRequest(s3BucketName, keyName, source));
+
+
+        } else {
+            //if we don't have an S3 bucket name, then it's a normal file system
+            File destinationFile = new File(destinationPath);
+
+            //just ensure we're not trying to write to the same place
+            if (destinationFile.equals(source)) {
+                throw new IOException("Destination is same as source: " + source);
+            }
+
+            if (destinationFile.exists()) {
+                if (!destinationFile.delete()) {
+                    throw new IOException("Failed to delete existing file " + destinationFile);
+                }
+            }
+
+            File destinationDir = destinationFile.getParentFile();
+            if (!destinationDir.exists()) {
+                if (!destinationDir.mkdirs()) {
+                    throw new IOException("Failed to create directory " + destinationDir);
+                }
+            }
+
+            FileInputStream fis = new FileInputStream(source);
+            try {
+                Files.copy(fis, destinationFile.toPath());
+            } finally {
+                fis.close();
+            }
+        }
+    }
+
+    /**
+     * fn to read the start of a file. The S3 API complains if you start reading a file but don't read to the end
+     * so this fn allows us to just get the first few chars
+     */
+    public static String readFirstCharactersFromSharedStorage(String filePath, int numBytes) throws Exception {
+        InputStream inputStream = readFileFromSharedStorage(filePath, new Integer(numBytes));
+        InputStreamReader reader = new InputStreamReader(inputStream, Charset.defaultCharset());
+
+        try {
+            StringBuilder sb = new StringBuilder();
+
+            char[] buf = new char[100];
+            while (true) {
+                int read = reader.read(buf);
+                if (read == -1
+                        || sb.length() >= numBytes) {
+                    break;
+                }
+
+                sb.append(buf, 0, read);
+            }
+
+            return sb.toString();
+
+        } finally {
+            reader.close();
+        }
+    }
+
+    public static InputStreamReader readFileReaderFromSharedStorage(String filePath) throws Exception {
+        InputStream inputStream = readFileFromSharedStorage(filePath);
+        return new InputStreamReader(inputStream, Charset.defaultCharset());
+    }
+
+    public static InputStream readFileFromSharedStorage(String filePath) throws Exception {
+        return readFileFromSharedStorage(filePath, null);
+    }
+
+    private static InputStream readFileFromSharedStorage(String filePath, Integer numBytes) throws Exception {
+        if (Strings.isNullOrEmpty(filePath)) {
+            throw new IllegalArgumentException("Must provide storage path");
+        }
+
+        if (filePath.startsWith(STORAGE_PATH_PREFIX_S3)) {
+
+            //if we have an S3 bucket name, then we use the S3 api
+            String s3BucketName = findS3BucketName(filePath);
+            String keyName = findS3KeyName(filePath);
+
+            GetObjectRequest request = new GetObjectRequest(s3BucketName, keyName);
+            if (numBytes != null) {
+                request.setRange(0, numBytes.intValue());
+            }
+
+            AmazonS3 s3Client = getS3Client();
+            S3Object object = s3Client.getObject(request);
+
+            InputStream inputStream = object.getObjectContent();
+            return inputStream;
+
+        } else {
+            //if we don't have an S3 bucket name, then it's a normal file system
+            File f = new File(filePath);
+            FileInputStream fis = new FileInputStream(f);
+            BufferedInputStream bis = new BufferedInputStream(fis); //always makes sense to use a buffered reader
+            return bis;
+        }
+    }
+
+    public static List<String> listFilesInSharedStorage(String dirPath) throws Exception {
+        if (Strings.isNullOrEmpty(dirPath)) {
+            throw new IllegalArgumentException("Must provide storage path");
+        }
+
+        List<String> ret = new ArrayList<>();
+
+        if (dirPath.startsWith(STORAGE_PATH_PREFIX_S3)) {
+
+            //if we have an S3 bucket name, then we use the S3 api
+            String s3BucketName = findS3BucketName(dirPath);
+            String keyPrefix = findS3KeyName(dirPath);
+
+            ListObjectsV2Request request = new ListObjectsV2Request();
+            request.setBucketName(s3BucketName);
+            request.setPrefix(keyPrefix);
+
+            AmazonS3 s3Client = getS3Client();
+            ListObjectsV2Result result = s3Client.listObjectsV2(request);
+            if (result.getObjectSummaries() != null) {
+                for (S3ObjectSummary objectSummary: result.getObjectSummaries()) {
+                    String key = objectSummary.getKey();
+                    //we need to format the key so that it's in the format we expect
+                    String s = STORAGE_PATH_PREFIX_S3 + UNIX_DELIM + s3BucketName + UNIX_DELIM + key;
+                    ret.add(s);
+                }
+            }
+
+        } else {
+            //if we don't have an S3 bucket name, then it's a normal file system
+            File f = new File(dirPath);
+            listFilesInDDirectoryRecursive(f, ret);
+        }
+
+        return ret;
+    }
+
+    private static void listFilesInDDirectoryRecursive(File f, List<String> ret) {
+        File[] files = f.listFiles();
+        if (files != null) {
+            for (File child: files) {
+                if (child.isDirectory()) {
+                    listFilesInDDirectoryRecursive(child, ret);
+
+                } else {
+                    String path = child.getAbsolutePath();
+                    ret.add(path);
+                }
+            }
+        }
+    }
+
+    private static String findS3KeyName(String path) {
+        path = normalisePath(path);
+
+        //expected format is
+        //S3/<bucketname>/key
+        int firstSlash = path.indexOf(UNIX_DELIM);
+        int secondSlash = path.indexOf(UNIX_DELIM, firstSlash+1);
+
+        if (firstSlash == -1
+                || secondSlash == -1) {
+            throw new IllegalArgumentException("Failed to find S3 bucket name from path " + path);
+        }
+
+        return path.substring(secondSlash+1);
+    }
+
+    private static String findS3BucketName(String path) {
+        path = normalisePath(path);
+
+        //expected format is
+        //S3/<bucketname>/key
+        int firstSlash = path.indexOf(UNIX_DELIM);
+        int secondSlash = path.indexOf(UNIX_DELIM, firstSlash+1);
+
+        if (firstSlash == -1
+                || secondSlash == -1) {
+            throw new IllegalArgumentException("Failed to find S3 bucket name from path " + path);
+        }
+
+        return path.substring(firstSlash+1, secondSlash);
+    }
+
+    private static String normalisePath(String path) {
+        //the S3 key is a unix style path, so we need to make sure to convert any windows-style over
+        if (path.indexOf("\\") > -1) {
+            path = path.replace('\\', UNIX_DELIM);
+        }
+        return path;
+    }
+
+    private static AmazonS3 getS3Client() {
+        if (cachedS3Client == null) {
+
+            ProfileCredentialsProvider credentialsProvider = new ProfileCredentialsProvider();
+
+            AmazonS3ClientBuilder clientBuilder = AmazonS3ClientBuilder
+                    .standard()
+                    .withCredentials(credentialsProvider)
+                    .withRegion(Regions.EU_WEST_2);
+
+            cachedS3Client = clientBuilder.build();
+        }
+
+        return cachedS3Client;
+    }
 }
