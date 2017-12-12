@@ -155,6 +155,8 @@ public class FileHelper {
 
             long bytes = source.length();
             long maxChunk = 1024 * 1024 * 1024 * 4; //4GB
+            //long maxChunk = 1024 * 1024 * 5; //4GB
+            LOG.trace("File size = " + bytes + " and multipart limit = " + maxChunk);
             if (bytes > maxChunk) {
 
                 //S3 has a 5GB limit on put operations before you have to use the multipart API, but I'm going with 4GB just in case
@@ -172,9 +174,10 @@ public class FileHelper {
                     while (filePosition < bytes) {
 
                         long bytesRemaining = bytes - filePosition;
+                        LOG.trace("File position = " + filePosition + " so bytes remaining are " + bytesRemaining);
                         long partSize = Math.min(maxChunk, bytesRemaining);
                         partNumber ++;
-                        LOG.info("Writing part " + partNumber + " of " + partSize + " bytes (out of " + bytes + ") to " + keyName);
+                        LOG.trace("Writing part " + partNumber + " of " + partSize + " bytes (out of " + bytes + ") to " + keyName);
 
                         UploadPartRequest uploadRequest = new UploadPartRequest()
                                 .withBucketName(s3BucketName)
