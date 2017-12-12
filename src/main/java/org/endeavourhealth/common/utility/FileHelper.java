@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -312,11 +313,20 @@ public class FileHelper {
     }
 
     public static List<String> listFilesInSharedStorage(String dirPath) throws Exception {
+        List<FileInfo> listing = listFilesInSharedStorageWithInfo(dirPath);
+        return listing
+                .stream()
+                .map(T -> T.getFilePath())
+                .collect(Collectors.toList());
+    }
+
+    public static List<FileInfo> listFilesInSharedStorageWithInfo(String dirPath) throws Exception {
+
         if (Strings.isNullOrEmpty(dirPath)) {
             throw new IllegalArgumentException("Must provide storage path");
         }
 
-        List<String> ret = new ArrayList<>();
+        List<FileInfo> ret = new ArrayList<>();
 
         if (dirPath.startsWith(STORAGE_PATH_PREFIX_S3)) {
 
@@ -335,7 +345,11 @@ public class FileHelper {
                     String key = objectSummary.getKey();
                     //we need to format the key so that it's in the format we expect
                     String s = STORAGE_PATH_PREFIX_S3 + UNIX_DELIM + s3BucketName + UNIX_DELIM + key;
-                    ret.add(s);
+                    Date lastModified = objectSummary.getLastModified();
+                    long size = objectSummary.getSize();
+
+                    FileInfo info = new FileInfo(s, lastModified, size);
+                    ret.add(info);
                 }
             }
 
@@ -348,7 +362,7 @@ public class FileHelper {
         return ret;
     }
 
-    private static void listFilesInDDirectoryRecursive(File f, List<String> ret) {
+    private static void listFilesInDDirectoryRecursive(File f, List<FileInfo> ret) {
         File[] files = f.listFiles();
         if (files != null) {
             for (File child: files) {
@@ -357,7 +371,10 @@ public class FileHelper {
 
                 } else {
                     String path = child.getAbsolutePath();
-                    ret.add(path);
+                    Date lastModified = new Date(child.lastModified());
+                    long length = child.length();
+                    FileInfo info = new FileInfo(path, lastModified, length);
+                    ret.add(info);
                 }
             }
         }
