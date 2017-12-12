@@ -144,7 +144,15 @@ public class FileHelper {
             String keyName = findS3KeyName(destinationPath);
 
             AmazonS3 s3Client = getS3Client();
-            s3Client.putObject(new PutObjectRequest(s3BucketName, keyName, source));
+
+            PutObjectRequest putRequest = new PutObjectRequest(s3BucketName, keyName, source);
+
+            //apply server-side encryption
+            ObjectMetadata objectMetadata = new ObjectMetadata();
+            objectMetadata.setSSEAlgorithm(ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION);
+            putRequest.setMetadata(objectMetadata);
+
+            s3Client.putObject(putRequest);
 
 
         } else {
