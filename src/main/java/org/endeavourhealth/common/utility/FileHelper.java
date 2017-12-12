@@ -1,20 +1,17 @@
 package org.endeavourhealth.common.utility;
 
-import ch.qos.logback.core.util.FileSize;
-import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.*;
 import com.google.common.base.Strings;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.URL;
-import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -409,11 +406,11 @@ public class FileHelper {
     private static AmazonS3 getS3Client() {
         if (cachedS3Client == null) {
 
-            ProfileCredentialsProvider credentialsProvider = new ProfileCredentialsProvider();
+            //ProfileCredentialsProvider credentialsProvider = new ProfileCredentialsProvider();
 
             AmazonS3ClientBuilder clientBuilder = AmazonS3ClientBuilder
                     .standard()
-                    .withCredentials(credentialsProvider)
+                    .withCredentials(DefaultAWSCredentialsProviderChain.getInstance())
                     .withRegion(Regions.EU_WEST_2);
 
             cachedS3Client = clientBuilder.build();
