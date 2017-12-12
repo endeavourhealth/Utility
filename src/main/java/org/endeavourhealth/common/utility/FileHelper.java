@@ -154,8 +154,8 @@ public class FileHelper {
             objectMetadata.setSSEAlgorithm(ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION);
 
             long bytes = source.length();
-            long maxChunk = 1024 * 1024 * 1024 * 4; //4GB
-            //long maxChunk = 1024 * 1024 * 5; //4GB
+            long maxChunk = 1024L * 1024L * 1024L * 4L; //4GB
+            //long maxChunk = 1024 * 1024 * 5; //5MB
             LOG.trace("File size = " + bytes + " and multipart limit = " + maxChunk);
             if (bytes > maxChunk) {
 
