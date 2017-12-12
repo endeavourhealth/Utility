@@ -1,12 +1,16 @@
 package org.endeavourhealth.common.utility;
 
+import ch.qos.logback.core.util.FileSize;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.*;
 import com.google.common.base.Strings;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.URL;
@@ -21,6 +25,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 public class FileHelper {
+    private static final Logger LOG = LoggerFactory.getLogger(FileHelper.class);
 
     private static final String STORAGE_PATH_PREFIX_S3 = "S3";
     private static final char UNIX_DELIM = '/';
@@ -145,15 +150,64 @@ public class FileHelper {
 
             AmazonS3 s3Client = getS3Client();
 
-            PutObjectRequest putRequest = new PutObjectRequest(s3BucketName, keyName, source);
-
-            //apply server-side encryption
             ObjectMetadata objectMetadata = new ObjectMetadata();
             objectMetadata.setSSEAlgorithm(ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION);
-            putRequest.setMetadata(objectMetadata);
 
-            s3Client.putObject(putRequest);
+            long bytes = source.length();
+            long maxChunk = 1024 * 1024 * 1024 * 4; //4GB
+            if (bytes > maxChunk) {
 
+                //S3 has a 5GB limit on put operations before you have to use the multipart API, but I'm going with 4GB just in case
+                InitiateMultipartUploadRequest initRequest = new InitiateMultipartUploadRequest(s3BucketName, keyName);
+                initRequest.setObjectMetadata(objectMetadata);
+
+                InitiateMultipartUploadResult initResponse = s3Client.initiateMultipartUpload(initRequest);
+                String uploadId = initResponse.getUploadId();
+
+                try {
+                    List<PartETag> partETags = new ArrayList<>();
+                    long filePosition = 0;
+                    int partNumber = 0;
+
+                    while (filePosition < bytes) {
+
+                        long bytesRemaining = bytes - filePosition;
+                        long partSize = Math.min(maxChunk, bytesRemaining);
+                        partNumber ++;
+
+                        UploadPartRequest uploadRequest = new UploadPartRequest()
+                                .withBucketName(s3BucketName)
+                                .withKey(keyName)
+                                .withUploadId(uploadId)
+                                .withPartNumber(partNumber)
+                                .withFileOffset(filePosition)
+                                .withFile(source)
+                                .withPartSize(partSize);
+
+                        // Upload part and add response to our list.
+                        UploadPartResult result = s3Client.uploadPart(uploadRequest);
+                        PartETag tag = result.getPartETag();
+                        partETags.add(tag);
+
+                        filePosition += partSize;
+                    }
+
+                    //tell S3 we've completed the upload
+                    CompleteMultipartUploadRequest compRequest = new CompleteMultipartUploadRequest(s3BucketName, keyName, uploadId, partETags);
+                    s3Client.completeMultipartUpload(compRequest);
+
+                } catch (Exception e) {
+                    s3Client.abortMultipartUpload(new AbortMultipartUploadRequest(s3BucketName, keyName, uploadId));
+                    throw e;
+                }
+
+            } else {
+                //if smaller than our multipart limit, just upload in one go
+                PutObjectRequest putRequest = new PutObjectRequest(s3BucketName, keyName, source);
+                putRequest.setMetadata(objectMetadata);
+
+                s3Client.putObject(putRequest);
+            }
 
         } else {
             //if we don't have an S3 bucket name, then it's a normal file system
