@@ -174,6 +174,7 @@ public class FileHelper {
                         long bytesRemaining = bytes - filePosition;
                         long partSize = Math.min(maxChunk, bytesRemaining);
                         partNumber ++;
+                        LOG.info("Writing part " + partNumber + " of " + partSize + " bytes (out of " + bytes + ") to " + keyName);
 
                         UploadPartRequest uploadRequest = new UploadPartRequest()
                                 .withBucketName(s3BucketName)
@@ -203,6 +204,7 @@ public class FileHelper {
 
             } else {
                 //if smaller than our multipart limit, just upload in one go
+                LOG.info("Writing whole file of " + bytes + " bytes to " + keyName);
                 PutObjectRequest putRequest = new PutObjectRequest(s3BucketName, keyName, source);
                 putRequest.setMetadata(objectMetadata);
 
