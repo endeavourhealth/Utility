@@ -435,4 +435,33 @@ public class FileHelper {
 
         return cachedS3Client;
     }
+
+    /**
+     * ensures all files are in the same directory (or S3 equivalent) and returns that parent directory
+     */
+    public static String validateFilesAreInSameDirectory(String[] files) throws FileNotFoundException {
+        List<String> list = Arrays.asList(files);
+        return validateFilesAreInSameDirectory(list);
+    }
+
+    public static String validateFilesAreInSameDirectory(List<String> files) throws FileNotFoundException {
+        String ret = null;
+
+        for (String file: files) {
+
+            File f = new File(file); //this still works even for an S3 path
+            String parent = f.getParent();
+
+            if (ret == null) {
+                ret = parent;
+
+            } else {
+                if (!ret.equalsIgnoreCase(parent)) {
+                    throw new FileNotFoundException("" + f + " isn't in the expected directory structure within " + ret);
+                }
+            }
+        }
+
+        return ret;
+    }
 }
