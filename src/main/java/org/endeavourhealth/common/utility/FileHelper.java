@@ -339,35 +339,49 @@ public class FileHelper {
             request.setPrefix(keyPrefix);
 
             AmazonS3 s3Client = getS3Client();
-            ListObjectsV2Result result = s3Client.listObjectsV2(request);
-            if (result.getObjectSummaries() != null) {
-                for (S3ObjectSummary objectSummary: result.getObjectSummaries()) {
-                    String key = objectSummary.getKey();
-                    //we need to format the key so that it's in the format we expect
-                    String s = STORAGE_PATH_PREFIX_S3 + UNIX_DELIM + s3BucketName + UNIX_DELIM + key;
-                    Date lastModified = objectSummary.getLastModified();
-                    long size = objectSummary.getSize();
 
-                    FileInfo info = new FileInfo(s, lastModified, size);
-                    ret.add(info);
+            while (true) {
+
+                ListObjectsV2Result result = s3Client.listObjectsV2(request);
+                if (result.getObjectSummaries() != null) {
+                    for (S3ObjectSummary objectSummary : result.getObjectSummaries()) {
+                        String key = objectSummary.getKey();
+                        //we need to format the key so that it's in the format we expect
+                        String s = STORAGE_PATH_PREFIX_S3 + UNIX_DELIM + s3BucketName + UNIX_DELIM + key;
+                        Date lastModified = objectSummary.getLastModified();
+                        long size = objectSummary.getSize();
+
+                        FileInfo info = new FileInfo(s, lastModified, size);
+                        ret.add(info);
+                    }
+                }
+
+                //the AWS function only returns 1000 results at a time, so check for this and request more if necessary
+                if (result.isTruncated()) {
+                    //the continuation token tells AWS where to resume
+                    String continuationToken = result.getNextContinuationToken();
+                    request.setContinuationToken(continuationToken);
+
+                } else {
+                    break;
                 }
             }
 
         } else {
             //if we don't have an S3 bucket name, then it's a normal file system
             File f = new File(dirPath);
-            listFilesInDDirectoryRecursive(f, ret);
+            listFilesInDirectoryRecursive(f, ret);
         }
 
         return ret;
     }
 
-    private static void listFilesInDDirectoryRecursive(File f, List<FileInfo> ret) {
+    private static void listFilesInDirectoryRecursive(File f, List<FileInfo> ret) {
         File[] files = f.listFiles();
         if (files != null) {
             for (File child: files) {
                 if (child.isDirectory()) {
-                    listFilesInDDirectoryRecursive(child, ret);
+                    listFilesInDirectoryRecursive(child, ret);
 
                 } else {
                     String path = child.getAbsolutePath();
