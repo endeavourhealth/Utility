@@ -348,11 +348,13 @@ public class FileHelper {
                         String key = objectSummary.getKey();
                         //we need to format the key so that it's in the format we expect
                         String s = STORAGE_PATH_PREFIX_S3 + UNIX_DELIM + s3BucketName + UNIX_DELIM + key;
-                        Date lastModified = objectSummary.getLastModified();
-                        long size = objectSummary.getSize();
+                        if (s.startsWith(dirPath + UNIX_DELIM)) {
+                            Date lastModified = objectSummary.getLastModified();
+                            long size = objectSummary.getSize();
 
-                        FileInfo info = new FileInfo(s, lastModified, size);
-                        ret.add(info);
+                            FileInfo info = new FileInfo(s, lastModified, size);
+                            ret.add(info);
+                        }
                     }
                 }
 
