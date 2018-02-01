@@ -471,7 +471,12 @@ public class FileHelper {
 
             } else {
                 if (!ret.equalsIgnoreCase(parent)) {
-                    throw new FileNotFoundException("" + f + " isn't in the expected directory structure within " + ret);
+                    String err = "" + f + " isn't in the expected directory structure within " + ret;
+                    for (String s: files) {
+                        err += "\n";
+                        err += s;
+                    }
+                    throw new FileNotFoundException(err);
                 }
             }
         }
