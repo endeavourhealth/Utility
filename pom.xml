@@ -4,15 +4,16 @@
 
     <groupId>org.endeavourhealth.common</groupId>
     <artifactId>utility</artifactId>
-    <version>1.21-SNAPSHOT</version>
+    <version>1.22-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <properties>
         <java.version>1.8</java.version>
 
-        <endeavour-cache.version>1.0-SNAPSHOT</endeavour-cache.version>
-        <endeavour-config.version>1.17-SNAPSHOT</endeavour-config.version>
+        <endeavour-cache.version>1.1-SNAPSHOT</endeavour-cache.version>
+        <endeavour-config.version>1.20-SNAPSHOT</endeavour-config.version>
 
+        <apache-commons.version>1.2</apache-commons.version>
         <guava.version>19.0</guava.version>
         <logback-classic.version>1.1.3</logback-classic.version>
         <slack-integration.version>1.2.1</slack-integration.version>
@@ -30,7 +31,11 @@
             <artifactId>configmanager</artifactId>
             <version>${endeavour-config.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>${apache-commons.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
