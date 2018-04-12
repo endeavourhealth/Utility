@@ -485,4 +485,44 @@ public class FileHelper {
 
         return ret;
     }
+
+    /**
+     * generic helper methods to cut down on duplicated code
+     */
+    public static void deleteRecursiveIfExists(String filePath) throws IOException {
+        deleteRecursiveIfExists(new File(filePath));
+    }
+
+    public static void deleteRecursiveIfExists(File f) throws IOException {
+        if (!f.exists()) {
+            return;
+        }
+
+        if (f.isDirectory()) {
+            for (File child: f.listFiles()) {
+                deleteRecursiveIfExists(child);
+            }
+        }
+
+        if (!f.delete()) {
+            throw new IOException("Failed to delete " + f);
+        }
+    }
+
+    public static void createDirectoryIfNotExists(String dirPath) throws IOException {
+        createDirectoryIfNotExists(new File(dirPath));
+    }
+
+    public static void createDirectoryIfNotExists(File f) throws IOException {
+        if (f.exists()) {
+            return;
+        }
+
+        if (f.mkdirs()) {
+            return;
+        }
+
+        throw new IOException("Failed to create directory " + f.getAbsolutePath());
+    }
+
 }
