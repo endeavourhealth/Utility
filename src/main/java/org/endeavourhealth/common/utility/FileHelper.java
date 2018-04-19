@@ -63,6 +63,11 @@ public class FileHelper {
     }
 
     public static boolean createDirectory(String directory) {
+        // S3 directories do not have to be pre-created
+        if (directory.startsWith(STORAGE_PATH_PREFIX_S3)) {
+            return true;
+        }
+
         File file = new File(directory);
 
         if (!file.exists())
@@ -509,7 +514,23 @@ public class FileHelper {
         }
     }
 
+    public static boolean directoryExists(String dirPath) throws IOException {
+        // S3 directories dont exist
+        if (dirPath.startsWith(STORAGE_PATH_PREFIX_S3)) {
+            return true;
+        }
+
+        File f = new File(dirPath);
+
+        return f.exists() && f.isDirectory();
+    }
+
     public static void createDirectoryIfNotExists(String dirPath) throws IOException {
+        // S3 directories dont exist
+        if (dirPath.startsWith(STORAGE_PATH_PREFIX_S3)) {
+            return;
+        }
+
         createDirectoryIfNotExists(new File(dirPath));
     }
 
