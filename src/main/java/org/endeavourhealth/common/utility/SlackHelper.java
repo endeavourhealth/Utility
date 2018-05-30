@@ -159,5 +159,14 @@ public class SlackHelper {
             LOG.error("Error reading in slack config", ex);
         }
     }
+
+    public Proxy getProxy() {
+
+        if (cachedUrls == null) {
+            readConfig();
+        }
+
+        return proxy;
+    }
 }
 
