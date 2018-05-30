@@ -160,7 +160,7 @@ public class SlackHelper {
         }
     }
 
-    public Proxy getProxy() {
+    public static Proxy getProxy() {
 
         if (cachedUrls == null) {
             readConfig();
