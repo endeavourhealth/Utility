@@ -148,11 +148,11 @@ public class SlackHelper {
 
                 SocketAddress addr = new InetSocketAddress(proxyUrl, proxyPort.intValue());
                 proxy = new Proxy(Proxy.Type.HTTP, addr);
-                LOG.debug("Using proxy " + proxyUrl + " port " + proxyPort);
+                //LOG.debug("Using proxy " + proxyUrl + " port " + proxyPort);
 
             } else {
                 proxy = Proxy.NO_PROXY;
-                LOG.debug("Not using proxy");
+                //LOG.debug("Not using proxy");
             }
 
         } catch (Exception ex) {
