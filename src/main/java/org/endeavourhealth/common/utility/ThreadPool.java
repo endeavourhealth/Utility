@@ -63,6 +63,24 @@ public class ThreadPool {
     }
 
     /**
+     * simply block until the thread pool is empty
+     * NOTE: this does not prevent new tasks being added to the thread pool
+     */
+    public List<ThreadPoolError> waitUntilEmpty() {
+
+        //if our queue is now at our limit, then block the current thread before the queue is smaller
+        while (threadPoolQueueSize.get() >= 0) {
+            try {
+                Thread.sleep(250);
+            } catch (InterruptedException ex) {
+                //if we get interrupted, don't log the error
+            }
+        }
+
+        return checkFuturesForErrors(false);
+    }
+
+    /**
      * shuts down the thread pool, so no more callables can be added, then waits for them to complete
      * and returns a list of errors that have happened with callables
      */
