@@ -69,7 +69,7 @@ public class ThreadPool {
     public List<ThreadPoolError> waitUntilEmpty() {
 
         //if our queue is now at our limit, then block the current thread before the queue is smaller
-        while (threadPoolQueueSize.get() >= 0) {
+        while (threadPoolQueueSize.get() > 0) {
             try {
                 Thread.sleep(250);
             } catch (InterruptedException ex) {
