@@ -123,6 +123,10 @@ public class SlackHelper {
             Integer proxyPort = null;
 
             JsonNode node = ConfigManager.getConfigurationAsJson("slack");
+            if (node == null) {
+                LOG.error("No config record found for slack");
+                return;
+            }
             Iterator<String> it = node.fieldNames();
             while (it.hasNext()) {
                 String field = it.next();
