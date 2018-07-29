@@ -25,7 +25,8 @@ import java.util.zip.ZipFile;
 public class FileHelper {
     private static final Logger LOG = LoggerFactory.getLogger(FileHelper.class);
 
-    private static final String STORAGE_PATH_PREFIX_S3 = "S3";
+    private static final String STORAGE_PATH_PREFIX_S3_OLD_WAY = "S3";
+    private static final String STORAGE_PATH_PREFIX_S3 = "s3://";
     private static final char UNIX_DELIM = '/';
 
     private static AmazonS3 cachedS3Client = null;
@@ -64,7 +65,8 @@ public class FileHelper {
 
     public static boolean createDirectory(String directory) {
         // S3 directories do not have to be pre-created
-        if (directory.startsWith(STORAGE_PATH_PREFIX_S3)) {
+        if (directory.startsWith(STORAGE_PATH_PREFIX_S3)
+                || directory.startsWith(STORAGE_PATH_PREFIX_S3_OLD_WAY)) {
             return true;
         }
 
@@ -145,7 +147,8 @@ public class FileHelper {
             throw new IOException("Source file " + source + " doesn't exist");
         }
 
-        if (destinationPath.startsWith(STORAGE_PATH_PREFIX_S3)) {
+        if (destinationPath.startsWith(STORAGE_PATH_PREFIX_S3)
+                || destinationPath.startsWith(STORAGE_PATH_PREFIX_S3_OLD_WAY)) {
 
             //if we have an S3 bucket name, then we use the S3 api
             String s3BucketName = findS3BucketName(destinationPath);
@@ -291,7 +294,8 @@ public class FileHelper {
             throw new IllegalArgumentException("Must provide storage path");
         }
 
-        if (filePath.startsWith(STORAGE_PATH_PREFIX_S3)) {
+        if (filePath.startsWith(STORAGE_PATH_PREFIX_S3)
+                || filePath.startsWith(STORAGE_PATH_PREFIX_S3_OLD_WAY)) {
 
             //if we have an S3 bucket name, then we use the S3 api
             String s3BucketName = findS3BucketName(filePath);
@@ -333,7 +337,8 @@ public class FileHelper {
 
         List<FileInfo> ret = new ArrayList<>();
 
-        if (dirPath.startsWith(STORAGE_PATH_PREFIX_S3)) {
+        if (dirPath.startsWith(STORAGE_PATH_PREFIX_S3)
+                || dirPath.startsWith(STORAGE_PATH_PREFIX_S3_OLD_WAY)) {
 
             //if we have an S3 bucket name, then we use the S3 api
             String s3BucketName = findS3BucketName(dirPath);
@@ -352,7 +357,14 @@ public class FileHelper {
                     for (S3ObjectSummary objectSummary : result.getObjectSummaries()) {
                         String key = objectSummary.getKey();
                         //we need to format the key so that it's in the format we expect
-                        String s = STORAGE_PATH_PREFIX_S3 + UNIX_DELIM + s3BucketName + UNIX_DELIM + key;
+                        String s = null;
+                        if (dirPath.startsWith(STORAGE_PATH_PREFIX_S3)) {
+                            s = STORAGE_PATH_PREFIX_S3 + s3BucketName + UNIX_DELIM + key;
+
+                        } else {
+                            s = STORAGE_PATH_PREFIX_S3_OLD_WAY + UNIX_DELIM + s3BucketName + UNIX_DELIM + key;
+                        }
+
                         if (s.startsWith(dirPath + UNIX_DELIM)) {
                             Date lastModified = objectSummary.getLastModified();
                             long size = objectSummary.getSize();
@@ -404,33 +416,55 @@ public class FileHelper {
     private static String findS3KeyName(String path) {
         path = normalisePath(path);
 
-        //expected format is
-        //S3/<bucketname>/key
-        int firstSlash = path.indexOf(UNIX_DELIM);
-        int secondSlash = path.indexOf(UNIX_DELIM, firstSlash+1);
+        if (path.startsWith(STORAGE_PATH_PREFIX_S3)) {
+            //expected format is: s3://bucketname/key
+            int prefixLen = STORAGE_PATH_PREFIX_S3.length();
+            int endIndex = path.indexOf(UNIX_DELIM, prefixLen);
+            if (endIndex == -1) {
+                throw new IllegalArgumentException("Failed to find S3 bucket name from path " + path);
+            }
 
-        if (firstSlash == -1
-                || secondSlash == -1) {
-            throw new IllegalArgumentException("Failed to find S3 bucket name from path " + path);
+            return path.substring(endIndex + 1);
+
+        } else {
+            //expected format is: S3/<bucketname>/key
+            int firstSlash = path.indexOf(UNIX_DELIM);
+            int secondSlash = path.indexOf(UNIX_DELIM, firstSlash + 1);
+
+            if (firstSlash == -1
+                    || secondSlash == -1) {
+                throw new IllegalArgumentException("Failed to find S3 bucket name from path " + path);
+            }
+
+            return path.substring(secondSlash + 1);
         }
-
-        return path.substring(secondSlash+1);
     }
 
     private static String findS3BucketName(String path) {
         path = normalisePath(path);
 
-        //expected format is
-        //S3/<bucketname>/key
-        int firstSlash = path.indexOf(UNIX_DELIM);
-        int secondSlash = path.indexOf(UNIX_DELIM, firstSlash+1);
+        if (path.startsWith(STORAGE_PATH_PREFIX_S3)) {
+            //expected format is: s3://bucketname/key
+            int prefixLen = STORAGE_PATH_PREFIX_S3.length();
+            int endIndex = path.indexOf(UNIX_DELIM, prefixLen);
+            if (endIndex == -1) {
+                throw new IllegalArgumentException("Failed to find S3 bucket name from path " + path);
+            }
 
-        if (firstSlash == -1
-                || secondSlash == -1) {
-            throw new IllegalArgumentException("Failed to find S3 bucket name from path " + path);
+            return path.substring(prefixLen, endIndex);
+
+        } else {
+            //old way expected format is: S3/<bucketname>/key
+            int firstSlash = path.indexOf(UNIX_DELIM);
+            int secondSlash = path.indexOf(UNIX_DELIM, firstSlash + 1);
+
+            if (firstSlash == -1
+                    || secondSlash == -1) {
+                throw new IllegalArgumentException("Failed to find S3 bucket name from path " + path);
+            }
+
+            return path.substring(firstSlash + 1, secondSlash);
         }
-
-        return path.substring(firstSlash+1, secondSlash);
     }
 
     private static String normalisePath(String path) {
@@ -516,7 +550,8 @@ public class FileHelper {
 
     public static boolean directoryExists(String dirPath) throws IOException {
         // S3 directories dont exist
-        if (dirPath.startsWith(STORAGE_PATH_PREFIX_S3)) {
+        if (dirPath.startsWith(STORAGE_PATH_PREFIX_S3)
+                || dirPath.startsWith(STORAGE_PATH_PREFIX_S3_OLD_WAY)) {
             return true;
         }
 
@@ -527,7 +562,8 @@ public class FileHelper {
 
     public static void createDirectoryIfNotExists(String dirPath) throws IOException {
         // S3 directories dont exist
-        if (dirPath.startsWith(STORAGE_PATH_PREFIX_S3)) {
+        if (dirPath.startsWith(STORAGE_PATH_PREFIX_S3)
+                || dirPath.startsWith(STORAGE_PATH_PREFIX_S3_OLD_WAY)) {
             return;
         }
 
