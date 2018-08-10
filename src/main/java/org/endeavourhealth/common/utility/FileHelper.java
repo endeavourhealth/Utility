@@ -285,6 +285,11 @@ public class FileHelper {
         return new InputStreamReader(inputStream, Charset.defaultCharset());
     }
 
+    public static InputStreamReader readFileReaderFromSharedStorage(String filePath, Charset encoding) throws Exception {
+        InputStream inputStream = readFileFromSharedStorage(filePath);
+        return new InputStreamReader(inputStream, encoding);
+    }
+
     public static InputStream readFileFromSharedStorage(String filePath) throws Exception {
         return readFileFromSharedStorage(filePath, null);
     }
