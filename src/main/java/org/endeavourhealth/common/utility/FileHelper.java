@@ -157,7 +157,9 @@ public class FileHelper {
             AmazonS3 s3Client = getS3Client();
 
             ObjectMetadata objectMetadata = new ObjectMetadata();
-            objectMetadata.setSSEAlgorithm(ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION);
+
+            String s = SSEAlgorithm.KMS.getAlgorithm();
+            objectMetadata.setSSEAlgorithm(s);
 
             long bytes = source.length();
             long maxChunk = 1024L * 1024L * 1024L * 4L; //4GB
