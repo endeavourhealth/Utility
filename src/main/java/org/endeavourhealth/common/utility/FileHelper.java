@@ -257,16 +257,23 @@ public class FileHelper {
      * fn to read the start of a file. The S3 API complains if you start reading a file but don't read to the end
      * so this fn allows us to just get the first few chars
      */
-    public static String readFirstCharactersFromSharedStorage(String filePath, int numBytes) throws Exception {
-        InputStream inputStream = readFileFromSharedStorage(filePath, new Integer(numBytes));
+    public static String readFirstCharactersFromSharedStorage(String filePath, long numBytes) throws Exception {
+        return readCharactersFromSharedStorage(filePath, 0, numBytes);
+    }
+
+    public static String readCharactersFromSharedStorage(String filePath, long startOffset, long numBytes) throws Exception {
+        InputStream inputStream = readFileFromSharedStorage(filePath, new Long(startOffset), new Long(numBytes));
         InputStreamReader reader = new InputStreamReader(inputStream, Charset.defaultCharset());
 
         try {
             StringBuilder sb = new StringBuilder();
 
-            char[] buf = new char[100];
+            char[] buf = new char[1000];
             while (true) {
                 int read = reader.read(buf);
+
+                //the S3 API seems to sometimes return slightly more than requested, so apply
+                //our limit in this check to make sure we only return what was specifically requested
                 if (read == -1
                         || sb.length() >= numBytes) {
                     break;
@@ -293,10 +300,10 @@ public class FileHelper {
     }
 
     public static InputStream readFileFromSharedStorage(String filePath) throws Exception {
-        return readFileFromSharedStorage(filePath, null);
+        return readFileFromSharedStorage(filePath, null, null);
     }
 
-    private static InputStream readFileFromSharedStorage(String filePath, Integer numBytes) throws Exception {
+    private static InputStream readFileFromSharedStorage(String filePath, Long startOffsetBytes, Long numBytesToRead) throws Exception {
         if (Strings.isNullOrEmpty(filePath)) {
             throw new IllegalArgumentException("Must provide storage path");
         }
@@ -309,8 +316,10 @@ public class FileHelper {
             String keyName = findS3KeyName(filePath);
 
             GetObjectRequest request = new GetObjectRequest(s3BucketName, keyName);
-            if (numBytes != null) {
-                request.setRange(0, numBytes.intValue());
+            if (startOffsetBytes != null && numBytesToRead != null) {
+                long startOffset = startOffsetBytes.longValue();
+                long endOffset = startOffset + numBytesToRead.longValue();
+                request.setRange(startOffset, endOffset);
             }
 
             AmazonS3 s3Client = getS3Client();
@@ -322,9 +331,16 @@ public class FileHelper {
         } else {
             //if we don't have an S3 bucket name, then it's a normal file system
             File f = new File(filePath);
-            FileInputStream fis = new FileInputStream(f);
-            BufferedInputStream bis = new BufferedInputStream(fis); //always makes sense to use a buffered reader
-            return bis;
+
+            if (startOffsetBytes != null && numBytesToRead != null) {
+                //if wanting to read from an offset, we need to use a random access file to seek to the desired place
+                return new FileHelper_RandomAccessInputStream(f, startOffsetBytes.longValue(), numBytesToRead.longValue());
+
+            } else {
+                FileInputStream fis = new FileInputStream(f);
+                BufferedInputStream bis = new BufferedInputStream(fis); //always makes sense to use a buffered reader
+                return bis;
+            }
         }
     }
 
@@ -589,4 +605,57 @@ public class FileHelper {
         throw new IOException("Failed to create directory " + f.getAbsolutePath());
     }
 
+}
+
+/**
+ * input stream that uses a RandomAccessFile to read from a file, to get around
+ * RandomAccessFile not being a sub-class of InputStream
+ */
+class FileHelper_RandomAccessInputStream extends InputStream {
+
+    private final RandomAccessFile raf;
+    private final long bytesToRead;
+    private long bytesRead = 0;
+
+    public FileHelper_RandomAccessInputStream(File src, long offset, long bytesToRead) throws IOException {
+        this.raf = new RandomAccessFile(src, "r");
+        this.bytesToRead = bytesToRead;
+
+        //seek to the starting offset
+        this.raf.seek(offset);
+    }
+
+    @Override
+    public int read() throws IOException {
+
+        //if we've already read to our limit, return -1 to say we're finished
+        if (bytesRead >= bytesToRead) {
+            return -1;
+        }
+
+        bytesRead ++;
+        return raf.read();
+    }
+
+    @Override
+    public int read(byte b[], int off, int len) throws IOException {
+
+        //if we've already read to our limit, return -1 to say we're finished
+        if (bytesRead >= bytesToRead) {
+            return -1;
+        }
+
+        //if we're asking to read beyond what we originally specified in the constructor, then restrict to that limit
+        if (bytesRead + len > bytesToRead) {
+            len = (int)(bytesToRead - bytesRead);
+        }
+
+        bytesRead += len;
+        return raf.read(b, off, len);
+    }
+
+    @Override
+    public void close() throws IOException {
+        this.raf.close();
+    }
 }
