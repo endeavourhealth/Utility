@@ -318,7 +318,7 @@ public class FileHelper {
             GetObjectRequest request = new GetObjectRequest(s3BucketName, keyName);
             if (startOffsetBytes != null && numBytesToRead != null) {
                 long startOffset = startOffsetBytes.longValue();
-                long endOffset = startOffset + numBytesToRead.longValue();
+                long endOffset = startOffset + numBytesToRead.longValue() - 1; //end offset is inclusive, so need to subtract one to make exclusive
                 request.setRange(startOffset, endOffset);
             }
 
