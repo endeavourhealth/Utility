@@ -254,6 +254,59 @@ public class FileHelper {
     }
 
     /**
+     * writes a byte array to storage. Note this function doesn't support S3 multi-part uploads, since
+     * we don't expect to have a 5GB array in memory
+     */
+    public static void writeBytesToSharedStorage(String destinationPath, byte[] bytes) throws Exception {
+        if (Strings.isNullOrEmpty(destinationPath)) {
+            throw new IllegalArgumentException("Must provide storage path");
+        }
+
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+
+        if (destinationPath.startsWith(STORAGE_PATH_PREFIX_S3)
+                || destinationPath.startsWith(STORAGE_PATH_PREFIX_S3_OLD_WAY)) {
+
+            //if we have an S3 bucket name, then we use the S3 api
+            String s3BucketName = findS3BucketName(destinationPath);
+            String keyName = findS3KeyName(destinationPath);
+
+            AmazonS3 s3Client = getS3Client();
+
+            ObjectMetadata objectMetadata = new ObjectMetadata();
+
+            String s = SSEAlgorithm.KMS.getAlgorithm();
+            objectMetadata.setSSEAlgorithm(s);
+            objectMetadata.setContentLength(bytes.length);
+
+            //if smaller than our multipart limit, just upload in one go
+            //LOG.info("Writing whole file of " + bytes + " bytes to " + keyName);
+            PutObjectRequest putRequest = new PutObjectRequest(s3BucketName, keyName, byteArrayInputStream, objectMetadata);
+
+            s3Client.putObject(putRequest);
+
+        } else {
+            //if we don't have an S3 bucket name, then it's a normal file system
+            File destinationFile = new File(destinationPath);
+
+            if (destinationFile.exists()) {
+                if (!destinationFile.delete()) {
+                    throw new IOException("Failed to delete existing file " + destinationFile);
+                }
+            }
+
+            File destinationDir = destinationFile.getParentFile();
+            if (!destinationDir.exists()) {
+                if (!destinationDir.mkdirs()) {
+                    throw new IOException("Failed to create directory " + destinationDir);
+                }
+            }
+
+            Files.copy(byteArrayInputStream, destinationFile.toPath());
+        }
+    }
+
+    /**
      * fn to read the start of a file. The S3 API complains if you start reading a file but don't read to the end
      * so this fn allows us to just get the first few chars
      */
@@ -337,9 +390,11 @@ public class FileHelper {
                 return new FileHelper_RandomAccessInputStream(f, startOffsetBytes.longValue(), numBytesToRead.longValue());
 
             } else {
-                FileInputStream fis = new FileInputStream(f);
+                //don't add buffering here, as it's already added in Apache CSVParser etc. and means we can't accurately count bytes
+                return new FileInputStream(f);
+                /*FileInputStream fis = new FileInputStream(f);
                 BufferedInputStream bis = new BufferedInputStream(fis); //always makes sense to use a buffered reader
-                return bis;
+                return bis;*/
             }
         }
     }
