@@ -499,7 +499,7 @@ public class FileHelper {
             int prefixLen = STORAGE_PATH_PREFIX_S3.length();
             int endIndex = path.indexOf(UNIX_DELIM, prefixLen);
             if (endIndex == -1) {
-                throw new IllegalArgumentException("Failed to find S3 bucket name from path " + path);
+                throw new IllegalArgumentException("Failed to find S3 key name from path " + path);
             }
 
             return path.substring(endIndex + 1);
@@ -511,7 +511,7 @@ public class FileHelper {
 
             if (firstSlash == -1
                     || secondSlash == -1) {
-                throw new IllegalArgumentException("Failed to find S3 bucket name from path " + path);
+                throw new IllegalArgumentException("Failed to find S3 key name from path " + path);
             }
 
             return path.substring(secondSlash + 1);
@@ -526,10 +526,10 @@ public class FileHelper {
             int prefixLen = STORAGE_PATH_PREFIX_S3.length();
             int endIndex = path.indexOf(UNIX_DELIM, prefixLen);
             if (endIndex == -1) {
-                throw new IllegalArgumentException("Failed to find S3 bucket name from path " + path);
+                return path.substring(prefixLen);
+            } else {
+                return path.substring(prefixLen, endIndex);
             }
-
-            return path.substring(prefixLen, endIndex);
 
         } else {
             //old way expected format is: S3/<bucketname>/key
