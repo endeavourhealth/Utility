@@ -68,10 +68,17 @@ public class ThreadPool {
      */
     public List<ThreadPoolError> waitUntilEmpty() {
 
+        int attempts = 0;
+
         //if our queue is now at our limit, then block the current thread before the queue is smaller
         while (threadPoolQueueSize.get() > 0) {
             try {
-                Thread.sleep(50);
+                //dynamically calculate the sleep based on how long we've waited so far, so that we don't
+                //wait too long initially, but then don't waste time with context switching once we've been waiting a while
+                attempts ++;
+                long delay = Math.min(25 * (((long)attempts / 4) + 1), 500);
+
+                Thread.sleep(delay);
             } catch (InterruptedException ex) {
                 //if we get interrupted, don't log the error
             }
