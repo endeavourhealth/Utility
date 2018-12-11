@@ -9,25 +9,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 
 public class ThreadPool {
     private static final Logger LOG = LoggerFactory.getLogger(ThreadPool.class);
 
-    private ExecutorService threadPool;
-    private AtomicInteger threadPoolQueueSize;
-    private ReentrantLock futuresLock;
-    private Map<Future, Callable> futures;
-    private AtomicInteger futureCheckCounter;
-    private int maxQueuedBeforeBlocking;
+    private final ExecutorService threadPool;
+    private final AtomicInteger threadPoolQueueSize = new AtomicInteger();
+    private final ReentrantLock futuresLock = new ReentrantLock();
+    private final Map<Future, Callable> futures = new ConcurrentHashMap<>();
+    private final AtomicInteger futureCheckCounter = new AtomicInteger();
+    private final int maxQueuedBeforeBlocking;
+    private final ReentrantLock isEmptyLock = new ReentrantLock();
+    private final Condition isEmptyCondition = isEmptyLock.newCondition();
 
     public ThreadPool(int threads, int maxQueuedBeforeBlocking) {
         this.threadPool = Executors.newFixedThreadPool(threads);
-        this.threadPoolQueueSize = new AtomicInteger();
-        this.futuresLock = new ReentrantLock();
-        this.futures = new ConcurrentHashMap<>();
-        this.futureCheckCounter = new AtomicInteger();
         this.maxQueuedBeforeBlocking = maxQueuedBeforeBlocking;
     }
 
@@ -38,12 +37,19 @@ public class ThreadPool {
     public List<ThreadPoolError> submit(Callable callable) {
         threadPoolQueueSize.incrementAndGet();
         Future future = threadPool.submit(new CallableWrapper(callable));
-        futures.put(future, callable);
+
+        //cache the Future object, so we can check for errors later
+        try {
+            futuresLock.lock();
+            futures.put(future, callable);
+        } finally {
+            futuresLock.unlock();
+        }
 
         //if our queue is now at our limit, then block the current thread before the queue is smaller
         while (threadPoolQueueSize.get() >= maxQueuedBeforeBlocking) {
             try {
-                Thread.sleep(250);
+                Thread.sleep(250); //would probably be more elegant to await on a condition but this is simpler
             } catch (InterruptedException ex) {
                 //if we get interrupted, don't log the error
             }
@@ -63,10 +69,38 @@ public class ThreadPool {
     }
 
     /**
-     * simply block until the thread pool is empty
+     * blocks until the thread pool is empty
      * NOTE: this does not prevent new tasks being added to the thread pool
      */
     public List<ThreadPoolError> waitUntilEmpty() {
+
+        try {
+            isEmptyLock.lock();
+
+            int attempts = 0;
+
+            //if our queue is now at our limit, then block the current thread before the queue is smaller
+            while (threadPoolQueueSize.get() > 0) {
+                try {
+                    //dynamically calculate the sleep based on how long we've waited so far, so that we don't
+                    //wait too long initially, but then don't waste time with context switching once we've been waiting a while
+                    attempts ++;
+                    long delay = Math.min(25 * (((long)attempts / 4) + 1), 500);
+
+                    isEmptyCondition.await(delay, TimeUnit.MILLISECONDS);
+
+                } catch (InterruptedException ex) {
+                    //if we get interrupted, don't log the error
+                }
+            }
+
+        } finally {
+            isEmptyLock.unlock();
+        }
+
+        return checkFuturesForErrors(false);
+    }
+    /*public List<ThreadPoolError> waitUntilEmpty() {
 
         int attempts = 0;
 
@@ -85,7 +119,7 @@ public class ThreadPool {
         }
 
         return checkFuturesForErrors(false);
-    }
+    }*/
 
     /**
      * shuts down the thread pool, so no more callables can be added, then waits for them to complete
@@ -166,11 +200,26 @@ public class ThreadPool {
 
         @Override
         public Object call() throws Exception {
+
+            int sizeAfterCompletion;
+            Object ret;
             try {
-                return callable.call();
+                ret = callable.call();
             } finally {
-                threadPoolQueueSize.decrementAndGet();
+                sizeAfterCompletion = threadPoolQueueSize.decrementAndGet();
             }
+
+            //if the pool is now empty, we should attempt to signal any thread waiting on that
+            if (sizeAfterCompletion == 0) {
+                try {
+                    isEmptyLock.lock();
+                    isEmptyCondition.signalAll();
+                } finally {
+                    isEmptyLock.unlock();
+                }
+            }
+
+            return ret;
         }
     }
 
