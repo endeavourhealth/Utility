@@ -57,7 +57,7 @@ public class ThreadPool {
 
         //check the futures every so often to see if any are done or any exceptions were raised
         int counter = futureCheckCounter.incrementAndGet();
-        if (counter % 10000 == 0) {
+        if (counter % 250 == 0) { //choice of 250 was pretty arbitrary
             futureCheckCounter.set(0);
 
             //LOG.trace("Checking {} futures with {} items in pool", futures.size(), threadPoolQueueSize);
@@ -170,7 +170,7 @@ public class ThreadPool {
                     //if it's done, remove from the iterator, which will remove from the map
                     it.remove();
 
-                    //just calling get on the future will cause any exception to be raised in this thread
+                    //calling get() on the future will cause any exception from the task execution to be raised in this thread
                     try {
                         future.get();
                     } catch (Exception ex) {
