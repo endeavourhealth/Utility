@@ -660,6 +660,65 @@ public class FileHelper {
         throw new IOException("Failed to create directory " + f.getAbsolutePath());
     }
 
+
+    public static void setPermanentStorageTags(String path, Map<String, String> s3Tags) {
+        if (s3Tags == null
+                || s3Tags.isEmpty()) {
+            return;
+        }
+
+        if (path.startsWith(STORAGE_PATH_PREFIX_S3)
+                || path.startsWith(STORAGE_PATH_PREFIX_S3_OLD_WAY)) {
+
+            AmazonS3 s3Client = getS3Client();
+
+            String s3BucketName = findS3BucketName(path);
+            String keyName = findS3KeyName(path);
+
+            // Replace the object's tags with two new tags.
+            List<Tag> newTags = new ArrayList<Tag>();
+            for (String key : s3Tags.keySet()) {
+                String value = s3Tags.get(key);
+                newTags.add(new Tag(key, value));
+            }
+
+            s3Client.setObjectTagging(new SetObjectTaggingRequest(s3BucketName, keyName, new ObjectTagging(newTags)));
+
+        } else {
+            //don't support tags on normal file system
+            throw new RuntimeException("Trying to set tags on non-S3 path " + path);
+        }
+    }
+
+    public static Map<String, String> getPermanentStorageTags(String path) {
+
+        if (path.startsWith(STORAGE_PATH_PREFIX_S3)
+                || path.startsWith(STORAGE_PATH_PREFIX_S3_OLD_WAY)) {
+
+            AmazonS3 s3Client = getS3Client();
+
+            String s3BucketName = findS3BucketName(path);
+            String keyName = findS3KeyName(path);
+
+            GetObjectTaggingRequest taggingRequest = new GetObjectTaggingRequest(s3BucketName, keyName);
+            GetObjectTaggingResult tagsResult = s3Client.getObjectTagging(taggingRequest);
+
+            Map<String, String> ret = new HashMap<>();
+
+            for (Tag tag: tagsResult.getTagSet()) {
+                String key = tag.getKey();
+                String value = tag.getValue();
+                ret.put(key, value);
+            }
+
+            return ret;
+
+        } else {
+            //don't support tags on normal file system
+            throw new RuntimeException("Trying to get tags on non-S3 path " + path);
+        }
+    }
+
 }
 
 /**
