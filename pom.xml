@@ -4,7 +4,7 @@
 
   <groupId>org.endeavourhealth.common</groupId>
   <artifactId>utility</artifactId>
-  <version>1.43-SNAPSHOT</version>
+  <version>1.44-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <properties>
@@ -14,8 +14,8 @@
     <maven-release.version>2.5.3</maven-release.version>
     <maven-dependency.version>3.1.1</maven-dependency.version>
 
-    <endeavour-cache.version>LATEST</endeavour-cache.version>
-    <endeavour-config.version>LATEST</endeavour-config.version>
+    <endeavour-cache.version>1.4-SNAPSHOT</endeavour-cache.version>
+    <endeavour-config.version>1.25-SNAPSHOT</endeavour-config.version>
 
     <aws-s3.version>1.11.247</aws-s3.version>
     <commons-io.version>1.2</commons-io.version>
