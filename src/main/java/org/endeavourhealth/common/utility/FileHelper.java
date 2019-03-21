@@ -134,6 +134,33 @@ public class FileHelper {
         return Files.notExists(pathObject);
     }
 
+    public static void deleteFromSharedStorage(String path) throws Exception {
+        if (Strings.isNullOrEmpty(path)) {
+            throw new IllegalArgumentException("Must provide path");
+        }
+
+        if (path.startsWith(STORAGE_PATH_PREFIX_S3)
+                || path.startsWith(STORAGE_PATH_PREFIX_S3_OLD_WAY)) {
+
+            //if we have an S3 bucket name, then we use the S3 api
+            String s3BucketName = findS3BucketName(path);
+            String keyName = findS3KeyName(path);
+
+            AmazonS3 s3Client = getS3Client();
+
+            DeleteObjectRequest deleteRequest = new DeleteObjectRequest(s3BucketName, keyName);
+            s3Client.deleteObject(deleteRequest);
+
+        } else {
+            //if we don't have an S3 bucket name, then it's a normal file system
+            File file = new File(path);
+            if (file.exists()
+                && !file.delete()) {
+                throw new IOException("Failed to delete " + path);
+            }
+        }
+    }
+
     public static void createFolder(Path folder) throws IOException {
         Files.createDirectory(folder);
     }
