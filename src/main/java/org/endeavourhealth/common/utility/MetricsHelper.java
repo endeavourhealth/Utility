@@ -31,6 +31,7 @@ public class MetricsHelper {
         return instance;
     }
 
+
     private MetricsHelper() {
 
         this.registry = new MetricRegistry();
