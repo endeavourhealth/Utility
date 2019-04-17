@@ -4,7 +4,7 @@
 
   <groupId>org.endeavourhealth.common</groupId>
   <artifactId>utility</artifactId>
-  <version>1.46-SNAPSHOT</version>
+  <version>1.47-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <properties>
@@ -77,6 +77,16 @@
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-java-sdk-core</artifactId>
     </dependency>
+
+    <dependency>
+      <groupId>io.dropwizard.metrics</groupId>
+      <artifactId>metrics-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.dropwizard.metrics</groupId>
+      <artifactId>metrics-graphite</artifactId>
+    </dependency>
+
   </dependencies>
 
 
