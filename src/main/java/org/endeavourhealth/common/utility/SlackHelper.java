@@ -7,6 +7,7 @@ import net.gpedro.integrations.slack.SlackApi;
 import net.gpedro.integrations.slack.SlackAttachment;
 import net.gpedro.integrations.slack.SlackException;
 import net.gpedro.integrations.slack.SlackMessage;
+import org.apache.commons.lang3.StringUtils;
 import org.endeavourhealth.common.config.ConfigManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +36,8 @@ public class SlackHelper {
         Hl7ReceiverAlertsBarts("Hl7ReceiverBarts"),
         Hl7ReceiverAlertsHomerton("Hl7ReceiverHomerton"),
         JDBCReaderAlertsHomerton("JDBCReaderAlertsHomerton"),
-        Hl7Receiver("Hl7Receiver");
+        Hl7Receiver("Hl7Receiver"),
+        RemoteFilerAlerts("RemoteFiler");
 
         private String channelName = null;
 
@@ -161,6 +163,22 @@ public class SlackHelper {
 
         } catch (Exception ex) {
             LOG.error("Error reading in slack config", ex);
+        }
+    }
+
+    public static synchronized void setupConfig(String sProxy, String port, String key, String url) {
+        if (cachedUrls != null) {
+            cachedUrls.put(key, url);
+            return;
+        } else {
+            if (StringUtils.isNotEmpty(sProxy)) {
+                SocketAddress addr = new InetSocketAddress(sProxy, Integer.valueOf(port));
+                proxy = new Proxy(Proxy.Type.HTTP, addr);
+            } else {
+                proxy = Proxy.NO_PROXY;
+            }
+            cachedUrls = new HashMap<>();
+            cachedUrls.put(key, url);
         }
     }
 
