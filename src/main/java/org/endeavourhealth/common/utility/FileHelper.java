@@ -461,20 +461,27 @@ public class FileHelper {
                 if (result.getObjectSummaries() != null) {
                     for (S3ObjectSummary objectSummary : result.getObjectSummaries()) {
                         String key = objectSummary.getKey();
+
                         //we need to format the key so that it's in the format we expect
-                        String s = null;
+                        String matchedFile = null;
                         if (dirPath.startsWith(STORAGE_PATH_PREFIX_S3)) {
-                            s = STORAGE_PATH_PREFIX_S3 + s3BucketName + UNIX_DELIM + key;
+                            matchedFile = STORAGE_PATH_PREFIX_S3 + s3BucketName + UNIX_DELIM + key;
 
                         } else {
-                            s = STORAGE_PATH_PREFIX_S3_OLD_WAY + UNIX_DELIM + s3BucketName + UNIX_DELIM + key;
+                            matchedFile = STORAGE_PATH_PREFIX_S3_OLD_WAY + UNIX_DELIM + s3BucketName + UNIX_DELIM + key;
                         }
 
-                        if (s.startsWith(dirPath + UNIX_DELIM)) {
+                        //because of the way prefixes work (i.e. not like directories), if we ask for everything with prefix
+                        //"test" we'll get back matches like test/a.txt but ALSO matches like testtest/a.txt. So we need to validate
+                        //that we only return the first type of matches
+                        if ((dirPath.endsWith("" + UNIX_DELIM) && matchedFile.startsWith(dirPath)) //if dirPath is "test/"
+                            || (!dirPath.endsWith("" + UNIX_DELIM) && matchedFile.startsWith(dirPath + UNIX_DELIM)) //if dirPath is "test"
+                            || (matchedFile.equals(dirPath))) { //if dirPath is an actual file "test/a.txt"
+
                             Date lastModified = objectSummary.getLastModified();
                             long size = objectSummary.getSize();
 
-                            FileInfo info = new FileInfo(s, lastModified, size);
+                            FileInfo info = new FileInfo(matchedFile, lastModified, size);
                             ret.add(info);
                         }
                     }
@@ -501,21 +508,23 @@ public class FileHelper {
     }
 
     private static void listFilesInDirectoryRecursive(File f, List<FileInfo> ret) {
-        File[] files = f.listFiles();
-        if (files != null) {
-            for (File child: files) {
-                if (child.isDirectory()) {
-                    listFilesInDirectoryRecursive(child, ret);
 
-                } else {
-                    String path = child.getAbsolutePath();
-                    Date lastModified = new Date(child.lastModified());
-                    long length = child.length();
-                    FileInfo info = new FileInfo(path, lastModified, length);
-                    ret.add(info);
+        if (f.isDirectory()) {
+            File[] files = f.listFiles();
+            if (files != null) {
+                for (File child: files) {
+                    listFilesInDirectoryRecursive(child, ret);
                 }
             }
+
+        } else {
+            String path = f.getAbsolutePath();
+            Date lastModified = new Date(f.lastModified());
+            long length = f.length();
+            FileInfo info = new FileInfo(path, lastModified, length);
+            ret.add(info);
         }
+
     }
 
     private static String findS3KeyName(String path) {
