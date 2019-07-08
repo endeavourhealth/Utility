@@ -166,7 +166,7 @@ public class SlackHelper {
         }
     }
 
-    public static synchronized void setupConfig(String sProxy, String port, String key, String url) {
+    /*public static synchronized void setupConfig(String sProxy, String port, String key, String url) {
         if (cachedUrls != null) {
             cachedUrls.put(key, url);
             return;
@@ -180,7 +180,7 @@ public class SlackHelper {
             cachedUrls = new HashMap<>();
             cachedUrls.put(key, url);
         }
-    }
+    }*/
 
     public static Proxy getProxy() {
 
