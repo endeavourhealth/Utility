@@ -98,11 +98,20 @@ public class MetricsHelper {
         requests.mark();
     }
 
+    private MetricsTimer recordTimeImpl(String metric) {
+        Timer timer = registry.timer(metric);
+        return new MetricsTimer(timer.time());
+    }
+
     public static void recordValue(String metric, long value) {
         instance().recordValueImpl(metric, value);
     }
 
     public static void recordEvent(String metric) {
         instance().recordEventImpl(metric);
+    }
+
+    public static MetricsTimer recordTime(String metric) {
+        return instance().recordTimeImpl(metric);
     }
 }
