@@ -54,6 +54,7 @@ public class MetricsHelper {
                             .convertDurationsTo(TimeUnit.MILLISECONDS)
                             .build();
                     reporter.start(frequency, TimeUnit.SECONDS);
+                    LOG.info("Console metrics reporter started");
                 }
 
                 JsonNode graphiteNode = json.get("graphite");
@@ -78,6 +79,7 @@ public class MetricsHelper {
                             .filter(MetricFilter.ALL)
                             .build(graphite);
                     reporter.start(1, TimeUnit.MINUTES);
+                    LOG.info("Graphite metrics reporter started");
                 }
             } else {
                 LOG.info("No metrics config record found");
