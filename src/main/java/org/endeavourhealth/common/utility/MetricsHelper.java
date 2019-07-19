@@ -79,7 +79,7 @@ public class MetricsHelper {
                             .filter(MetricFilter.ALL)
                             .build(graphite);
                     reporter.start(1, TimeUnit.MINUTES);
-                    LOG.info("Graphite metrics reporter started");
+                    LOG.info("Graphite metrics reporter started [" + prefix + "]");
                 }
             } else {
                 LOG.info("No metrics config record found");
