@@ -8,7 +8,9 @@ import org.endeavourhealth.common.config.ConfigManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetAddress;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
@@ -64,8 +66,7 @@ public class MetricsHelper {
 
                     //all events should be prefixed with the server name and app
                     //e.g. N3-MessagingAPI-01.messaging-api
-                    InetAddress ip = InetAddress.getLocalHost();
-                    String hostname = ip.getHostName();
+                    String hostname = getHostName();
                     String appId = ConfigManager.getAppId();
                     String prefix = hostname + "." + appId;
 
@@ -87,6 +88,14 @@ public class MetricsHelper {
 
         } catch (Exception ex) {
             LOG.error("Error loading graphite config record", ex);
+        }
+    }
+
+    private String getHostName() throws IOException {
+        Runtime r = Runtime.getRuntime();
+        Process p = r.exec("hostname");
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+            return br.readLine();
         }
     }
 
