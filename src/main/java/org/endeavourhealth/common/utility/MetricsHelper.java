@@ -114,6 +114,10 @@ public class MetricsHelper {
         return new MetricsTimer(timer.time());
     }
 
+    private Counter recordCounterImpl(String metric) {
+        return registry.counter(metric);
+    }
+
     public static void recordValue(String metric, long value) {
         instance().recordValueImpl(metric, value);
     }
@@ -124,5 +128,9 @@ public class MetricsHelper {
 
     public static MetricsTimer recordTime(String metric) {
         return instance().recordTimeImpl(metric);
+    }
+
+    public static Counter recordCounter(String metric) {
+        return instance().recordCounterImpl(metric);
     }
 }
