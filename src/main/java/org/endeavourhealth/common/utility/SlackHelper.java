@@ -29,6 +29,7 @@ public class SlackHelper {
 
     //enum to define the channels we can send to
     public enum Channel {
+        ReportSchedulerAlerts("ReportScheduler"),
         QueueReaderAlerts("QueueReader"),
         SftpReaderAlerts("SftpReader"),
         EnterprisePersonUpdaterAlerts("EnterprisePersonUpdater"),
