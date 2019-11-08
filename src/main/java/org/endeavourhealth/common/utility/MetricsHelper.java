@@ -101,10 +101,6 @@ public class MetricsHelper {
                     LOG.info("Graphite metrics reporter started [" + prefix + "]");
                 }
 
-                //automatically start the heartbeat gauge running
-                HeartbeatGaugeImpl gauge = new HeartbeatGaugeImpl();
-                registry.register("heartbeat", gauge);
-
             } else {
                 LOG.info("No metrics config record found");
             }
@@ -115,6 +111,17 @@ public class MetricsHelper {
     }
 
 
+    public static void startHeartbeat() {
+        instance().startHeartbeatImpl();
+    }
+
+    private void startHeartbeatImpl() {
+        //remove any existing one, just in case this is called twice
+        registry.remove("heartbeat");
+
+        HeartbeatGaugeImpl gauge = new HeartbeatGaugeImpl();
+        registry.register("heartbeat", gauge);
+    }
 
     public static String getHostName() throws IOException {
         Runtime r = Runtime.getRuntime();
