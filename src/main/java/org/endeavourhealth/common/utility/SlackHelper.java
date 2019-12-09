@@ -32,6 +32,7 @@ public class SlackHelper {
         ReportSchedulerAlerts("ReportScheduler"),
         QueueReaderAlerts("QueueReader"),
         SftpReaderAlerts("SftpReader"),
+        SftpReaderReceipts("SftpReaderReceipts"),
         EnterprisePersonUpdaterAlerts("EnterprisePersonUpdater"),
         EnterpriseAgeUpdaterAlerts("EnterpriseAgeUpdater"),
         Hl7ReceiverAlertsBarts("Hl7ReceiverBarts"),
