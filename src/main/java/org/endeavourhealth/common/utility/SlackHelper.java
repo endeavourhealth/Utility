@@ -65,7 +65,7 @@ public class SlackHelper {
         sendSlackMessage(channel, message, (String)null);
     }
 
-    public static void sendSlackMessage(Channel channel, String message, Exception ex) {
+    public static void sendSlackMessage(Channel channel, String message, Throwable ex) {
 
         String attachmentStr = null;
         if (ex != null) {
