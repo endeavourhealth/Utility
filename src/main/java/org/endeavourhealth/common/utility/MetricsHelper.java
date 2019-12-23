@@ -4,6 +4,7 @@ import com.codahale.metrics.*;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.base.Strings;
 import org.endeavourhealth.common.config.ConfigManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,10 +81,14 @@ public class MetricsHelper {
                     int port = graphiteNode.get("port").asInt();
 
                     //all events should be prefixed with the server name and app
-                    //e.g. N3-MessagingAPI-01.messaging-api
-                    String hostname = getHostName();
-                    String appId = ConfigManager.getAppId();
+                    String hostname = getHostName(); //e.g. N3-MessagingAPI-01.messaging-api
+                    String appId = ConfigManager.getAppId(); //e.g. "QueueReader"
+                    String subAppId = ConfigManager.getAppSubId(); //e.g. "InboundA"
+
                     String prefix = hostname + "." + appId;
+                    if (!Strings.isNullOrEmpty(subAppId)) {
+                        prefix += "." + subAppId;
+                    }
 
                     Graphite graphite = new Graphite(new InetSocketAddress(address, port));
 
