@@ -115,6 +115,10 @@ public class MetricsHelper {
         }
     }
 
+    public static MetricRegistry getRegistry() {
+        return instance().registry;
+    }
+
 
     public static void startHeartbeat() {
         instance().startHeartbeatImpl();
