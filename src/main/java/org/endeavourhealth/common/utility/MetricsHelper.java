@@ -3,6 +3,7 @@ package org.endeavourhealth.common.utility;
 import com.codahale.metrics.*;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
+import com.codahale.metrics.jvm.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.base.Strings;
 import org.endeavourhealth.common.config.ConfigManager;
@@ -12,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.Set;
@@ -49,6 +51,11 @@ public class MetricsHelper {
 
 
     private MetricsHelper() {
+
+        //we need config manager to know our app ID before we can properly start
+        if (Strings.isNullOrEmpty(ConfigManager.getAppId())) {
+            throw new RuntimeException("Trying to start MetricsHelper before ConfigManager is initialised");
+        }
 
         this.registry = new MetricRegistry();
 
@@ -99,6 +106,13 @@ public class MetricsHelper {
                             .convertDurationsTo(TimeUnit.MILLISECONDS)
                             .filter(MetricFilter.ALL)
                             .build(graphite);
+
+                    //set up default metrics for whatever app we're running
+                    registry.register("Garbage Collection", new GarbageCollectorMetricSet());
+                    registry.register("Buffers", new BufferPoolMetricSet(ManagementFactory.getPlatformMBeanServer()));
+                    registry.register("Memory", new MemoryUsageGaugeSet());
+                    registry.register("Threads", new ThreadStatesGaugeSet());
+                    registry.register("File Descriptor", new FileDescriptorRatioGauge());
 
                     //send metrics every minute
                     reporter.start(GRAPHITE_REPORT_FREQUENCY, GRAPHITE_REPORT_UNITS);
