@@ -17,6 +17,14 @@ public class ExpiringCache<K,V> implements Map<K,V> {
         this.msDuration = msDuration;
     }
 
+    public static ExpiringCache factoryOneMinute() {
+        return new ExpiringCache(1000L * 60L);
+    }
+
+    public static ExpiringCache factoryFiveMinutes() {
+        return new ExpiringCache(1000L * 60L * 5L);
+    }
+
     @Override
     public int size() {
         throw new RuntimeException("Function not supported in ExpiringCache");
