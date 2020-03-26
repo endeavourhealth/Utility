@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * simple cache class, using a concurrent map, to allow us cache items and expire them automatically
+ * NOTE: this class doesn't remove expired objects, so won't free up memory automatically
  */
 public class ExpiringCache<K,V> implements Map<K,V> {
 
