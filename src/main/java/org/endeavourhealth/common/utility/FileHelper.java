@@ -6,7 +6,9 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.*;
 import com.google.common.base.Strings;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
+import org.endeavourhealth.common.config.ConfigManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -755,6 +757,62 @@ public class FileHelper {
         }
     }
 
+    private static File getTempDir() throws Exception {
+        String appId = ConfigManager.getAppId();
+
+        String homeDir = System.getProperty("user.home");
+        File tmpDir = new File(homeDir, appId + "_TMP");
+        if (!tmpDir.exists()) {
+            if (!tmpDir.mkdirs()) {
+                throw new Exception("Failed to create temp directory " + tmpDir);
+            }
+        }
+
+        return tmpDir;
+    }
+
+    /**
+     * if the given file path is an S3 path, it'll copy the file to a local file in a temp directory
+     * if the file path is NOT an S3 path, just return a File object for that path
+     */
+    public static File copyFileFromStorageToTempDirIfNecessary(String filePath) throws Exception {
+
+        //check if an S3 path or not
+        if (!filePath.startsWith(STORAGE_PATH_PREFIX_S3)
+                && !filePath.startsWith(STORAGE_PATH_PREFIX_S3_OLD_WAY)) {
+            return new File(filePath);
+        }
+
+
+
+        //give the temp file a unique name, so no chance of mixing up with anything else
+        String fileName = "" + UUID.randomUUID().toString() + "_" + FilenameUtils.getName(filePath);
+        File dst = new File(getTempDir(), fileName);
+
+        //copy from S3 to tmp
+        InputStream is = readFileFromSharedStorage(filePath);
+        try {
+            Files.copy(is, dst.toPath());
+
+        } finally {
+            is.close();
+        }
+
+        return dst;
+    }
+
+    /**
+     * if the file object was created using the above copy function then this will
+     * delete the file, otherwise does nothing
+     */
+    public static void deleteFileFromTempDirIfNecessary(File f) throws Exception {
+
+        File parent = f.getParentFile();
+        File tempDir = getTempDir();
+        if (parent.equals(tempDir)) {
+            f.delete();
+        }
+    }
 }
 
 /**
