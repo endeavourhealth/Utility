@@ -783,11 +783,12 @@ public class FileHelper {
             return new File(filePath);
         }
 
-
-
         //give the temp file a unique name, so no chance of mixing up with anything else
-        String fileName = "" + UUID.randomUUID().toString() + "_" + FilenameUtils.getName(filePath);
-        File dst = new File(getTempDir(), fileName);
+        File dir = new File(getTempDir(), UUID.randomUUID().toString());
+        dir.mkdirs();
+
+        String fileName = FilenameUtils.getName(filePath);
+        File dst = new File(dir, fileName);
 
         //copy from S3 to tmp
         InputStream is = readFileFromSharedStorage(filePath);
@@ -807,11 +808,23 @@ public class FileHelper {
      */
     public static void deleteFileFromTempDirIfNecessary(File f) throws Exception {
 
-        File parent = f.getParentFile();
-        File tempDir = getTempDir();
-        if (parent.equals(tempDir)) {
-            f.delete();
+        File uuidDir = f.getParentFile();
+        if (uuidDir == null) {
+            return;
         }
+
+        File possibleTempDir = uuidDir.getParentFile();
+        if (possibleTempDir == null) {
+            return;
+        }
+
+        File tempDir = getTempDir();
+        if (!possibleTempDir.equals(tempDir)) {
+            return;
+        }
+
+        //delete the UUID directory and down
+        deleteRecursiveIfExists(uuidDir);
     }
 }
 
