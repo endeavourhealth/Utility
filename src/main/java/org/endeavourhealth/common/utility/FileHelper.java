@@ -757,7 +757,7 @@ public class FileHelper {
         }
     }
 
-    private static File getTempDir() throws Exception {
+    public static File getTempDir() throws Exception {
         String appId = ConfigManager.getAppId();
 
         String homeDir = System.getProperty("user.home");
