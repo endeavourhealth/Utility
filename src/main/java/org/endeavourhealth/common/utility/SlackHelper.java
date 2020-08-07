@@ -39,7 +39,8 @@ public class SlackHelper {
         Hl7ReceiverAlertsHomerton("Hl7ReceiverHomerton"),
         JDBCReaderAlertsHomerton("JDBCReaderAlertsHomerton"),
         Hl7Receiver("Hl7Receiver"),
-        RemoteFilerAlerts("RemoteFiler");
+        RemoteFilerAlerts("RemoteFiler"),
+        MessagingApi("MessagingApi");
 
         private String channelName = null;
 
