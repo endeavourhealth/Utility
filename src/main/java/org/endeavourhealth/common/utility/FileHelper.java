@@ -826,6 +826,25 @@ public class FileHelper {
         //delete the UUID directory and down
         deleteRecursiveIfExists(uuidDir);
     }
+
+    /**
+     * varargs fn to concatenate multiple tokens into a file path
+     */
+    public static String concatFilePath(String... toks) {
+        if (toks.length == 0) {
+            throw new IllegalArgumentException("Passed empty arguments");
+        }
+
+        if (toks.length == 1) {
+            return toks[0];
+        }
+
+        String s = toks[0];
+        for (int i=1; i<toks.length; i++) {
+            s = FilenameUtils.concat(s, toks[i]);
+        }
+        return s;
+    }
 }
 
 /**
@@ -879,4 +898,5 @@ class FileHelper_RandomAccessInputStream extends InputStream {
     public void close() throws IOException {
         this.raf.close();
     }
+
 }
