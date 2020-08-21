@@ -14,17 +14,31 @@ public class ExpiringCache<K,V> implements Map<K,V> {
     private final Map<K, ExpiringCacheElement<V>> innerMap = new ConcurrentHashMap<>();
     private final long msDuration;
 
+    public enum Duration {
+        OneMinute(60 * 1000),
+        FiveMinutes(5 * 60 * 1000),
+        TenMinutes(10 * 60 * 1000),
+        OneHour(60 * 60 * 1000);
+
+        private long ms;
+
+        Duration(long ms) {
+            this.ms = ms;
+        }
+
+        long getMs() {
+            return this.ms;
+        }
+    }
+
     public ExpiringCache(long msDuration) {
         this.msDuration = msDuration;
     }
 
-    public static ExpiringCache factoryOneMinute() {
-        return new ExpiringCache(1000L * 60L);
+    public ExpiringCache(Duration d) {
+        this.msDuration = d.getMs();
     }
 
-    public static ExpiringCache factoryFiveMinutes() {
-        return new ExpiringCache(1000L * 60L * 5L);
-    }
 
     @Override
     public int size() {
