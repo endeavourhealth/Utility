@@ -14,7 +14,6 @@ import org.endeavourhealth.common.utility.ExpiringCache.Duration;
  */
 public class ExpiringSet<V> implements Set<V> {
 
-    private final Set<V> store = new HashSet<>();
     private final Map<V, ExpiringCacheElement<V>> innerMap = new ConcurrentHashMap<>();
     private final long msDuration ;
 
