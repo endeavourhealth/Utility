@@ -757,6 +757,9 @@ public class FileHelper {
         }
     }
 
+    /**
+     * returns a standard "temp" directory to use, under the user home directory, and factoring in the app ID
+     */
     public static File getTempDir() throws Exception {
         String appId = ConfigManager.getAppId();
 
@@ -769,6 +772,23 @@ public class FileHelper {
         }
 
         return tmpDir;
+    }
+
+    /**
+     * creates and returns a unique directory under the temp directory. Useful if multiple apps are doing
+     * stuff with files of the same name, to avoid different instances overwriting files used by each other
+     */
+    public static File getTempDirRandomSubdirectory() throws Exception {
+        File tempDir = getTempDir();
+        File subTempDir = new File(tempDir, UUID.randomUUID().toString());
+        if (!subTempDir.exists()) {
+            boolean createDir = subTempDir.mkdirs();
+            if (!createDir) {
+                throw new Exception("Failed to create temp dir " + subTempDir);
+            }
+        }
+
+        return subTempDir;
     }
 
     /**
