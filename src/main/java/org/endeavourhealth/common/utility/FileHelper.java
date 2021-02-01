@@ -367,7 +367,7 @@ public class FileHelper {
                 throw new Exception("Failed to find file length for " + filePath);
             }
             long len = matchingInfo.getSize();
-            LOG.warn("Failed to read file from S3 due to request of " + numBytes + " being shorter than actual len " + len + " bytes, so will try again with correct length: " + filePath);
+            LOG.warn("Failed to read file from S3 due to request of " + numBytes + " being longer than actual len " + len + " bytes, so will try again with correct length: " + filePath);
             return readCharactersFromSharedStorage(filePath, 0, len);
         }
     }
