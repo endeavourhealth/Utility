@@ -340,10 +340,40 @@ public class FileHelper {
      * so this fn allows us to just get the first few chars
      */
     public static String readFirstCharactersFromSharedStorage(String filePath, long numBytes) throws Exception {
-        return readCharactersFromSharedStorage(filePath, 0, numBytes);
+
+        try {
+            return readCharactersFromSharedStorage(filePath, 0, numBytes);
+
+        } catch (AmazonS3Exception s3ex) {
+
+            //if we try to request more data than exists in an S3 file, then it'll just
+            //throw an exception. To give the same result as a file system file (i.e. read UP TO the number of bytes)
+            //detect the error, then get the actual file size, and read that amount
+            String msg = s3ex.getMessage();
+            if (msg == null
+                    || !msg.contains("The requested range is not satisfiable")) {
+                throw s3ex;
+            }
+
+            FileInfo matchingInfo = null;
+            List<FileInfo> infoList = listFilesInSharedStorageWithInfo(filePath);
+            for (FileInfo info: infoList) {
+                if (info.getFilePath().equalsIgnoreCase(filePath)) {
+                    matchingInfo = info;
+                    break;
+                }
+            }
+            if (matchingInfo == null) {
+                throw new Exception("Failed to find file length for " + filePath);
+            }
+            long len = matchingInfo.getSize();
+            LOG.warn("Failed to read file from S3 due to request of " + numBytes + " being shorter than actual len " + len + " bytes, so will try again with correct length: " + filePath);
+            return readCharactersFromSharedStorage(filePath, 0, len);
+        }
     }
 
     public static String readCharactersFromSharedStorage(String filePath, long startOffset, long numBytes) throws Exception {
+
         InputStream inputStream = readFileFromSharedStorage(filePath, new Long(startOffset), new Long(numBytes));
         InputStreamReader reader = new InputStreamReader(inputStream, Charset.defaultCharset());
 
