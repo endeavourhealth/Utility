@@ -694,6 +694,26 @@ public class FileHelper {
         }
     }
 
+    /**
+     * tests if a specific file exists in a file system or AWS S3
+     */
+    public static boolean fileExists(String filePath) throws IOException {
+
+        if (filePath.startsWith(STORAGE_PATH_PREFIX_S3)
+                || filePath.startsWith(STORAGE_PATH_PREFIX_S3_OLD_WAY)) {
+
+            String s3BucketName = findS3BucketName(filePath);
+            String keyName = findS3KeyName(filePath);
+
+            AmazonS3 s3Client = getS3Client();
+            return s3Client.doesObjectExist(s3BucketName, keyName);
+
+        } else {
+            File f = new File(filePath);
+            return f.exists();
+        }
+    }
+
     public static boolean directoryExists(String dirPath) throws IOException {
         // S3 directories dont exist
         if (dirPath.startsWith(STORAGE_PATH_PREFIX_S3)
